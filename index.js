@@ -3,4 +3,5 @@ import { PORT } from './config/constants'
 
 app.listen(PORT, (error) => {
   if (error) throw error
+  console.log('**Server is running!**')
 })
