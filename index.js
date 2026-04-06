@@ -1,5 +1,5 @@
-import app from './app'
-import { PORT } from './config/constants'
+import app from './app.js'
+import { PORT } from './config/constants.js'
 
 app.listen(PORT, (error) => {
   if (error) throw error
