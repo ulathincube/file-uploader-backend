@@ -8,19 +8,32 @@ import session from 'express-session'
 import { SESSION_SECRET } from './config/constants.js'
 import passport from 'passport'
 import cors from 'cors'
+import 'dotenv/config'
+import { PrismaSessionStore } from '@quixo3/prisma-session-store'
+import prisma from './config/prisma.js'
 
 const app = express()
 
 app.use(cors())
 
+const store = new PrismaSessionStore(prisma, {
+  checkPeriod: 1000 * 60 * 3,
+  dbRecordIdIsSessionId: true,
+  dbRecordIdFunction: undefined,
+})
+
 app.use(
   session({
+    store,
     secret: SESSION_SECRET,
     rolling: true,
     saveUninitialized: true,
     resave: false,
     cookie: {
       maxAge: 1000 * 60 * 60 * 5,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' ? true : false,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     },
   }),
 )
