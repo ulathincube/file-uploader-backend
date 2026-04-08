@@ -3,6 +3,7 @@ import errorHandler from './errors/errorHandler.js'
 import notFound from './errors/notFound.js'
 import indexRouter from './routes/index.js'
 import authRouter from './routes/auth.js'
+import filesRouter from './routes/files.js'
 import './config/passport.js'
 import session from 'express-session'
 import { SESSION_SECRET } from './config/constants.js'
@@ -44,6 +45,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 app.use('/api/auth', authRouter)
+app.use('/api/files', filesRouter)
 app.use('/api/index', indexRouter)
 app.use('/*splat', notFound)
 
