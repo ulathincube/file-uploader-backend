@@ -6,7 +6,7 @@ import authRouter from './routes/auth.js'
 import filesRouter from './routes/files.js'
 import './config/passport.js'
 import session from 'express-session'
-import { SESSION_SECRET } from './config/constants.js'
+import { SESSION_SECRET, CLIENT_URL } from './config/constants.js'
 import passport from 'passport'
 import cors from 'cors'
 import 'dotenv/config'
@@ -15,7 +15,14 @@ import prisma from './config/prisma.js'
 
 const app = express()
 
-app.use(cors())
+app.set('trust proxy', 1)
+
+app.use(
+  cors({
+    origin: [CLIENT_URL],
+    credentials: true,
+  }),
+)
 
 const store = new PrismaSessionStore(prisma, {
   checkPeriod: 1000 * 60 * 3,
@@ -25,13 +32,14 @@ const store = new PrismaSessionStore(prisma, {
 
 app.use(
   session({
-    store,
+    // store,
     secret: SESSION_SECRET,
     rolling: true,
     saveUninitialized: true,
+    unset: 'destroy',
     resave: false,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 5,
+      maxAge: 1000 * 60 * 60 * 2,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production' ? true : false,
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
@@ -43,6 +51,17 @@ app.use(passport.session())
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// const logger = (req, res, next) => {
+//   console.log({
+//     user: req.user,
+//     url: req.url,
+//     authenticated: req.isAuthenticated() || false,
+//   })
+//   next()
+// }
+
+// app.use(logger)
 
 app.use('/api/auth', authRouter)
 app.use('/api/files', filesRouter)
