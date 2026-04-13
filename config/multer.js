@@ -1,15 +1,7 @@
 import multer from 'multer'
 import { extname } from 'node:path'
 
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => {
-    callback(null, 'uploads/')
-  },
-  filename: (req, file, callback) => {
-    const savedName = `${file.fieldname}-${Date.now()}${extname(file.originalname)}`
-    callback(null, savedName)
-  },
-})
+const storage = multer.memoryStorage()
 
 const upload = multer({
   storage,

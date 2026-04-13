@@ -29,16 +29,19 @@ model User {
 
 model Folder {
   id Int @id @default(autoincrement())
-  name String @unique @default("/")
+  name String @unique
   files File[]
 }
 
 model File {
   id Int @id @default(autoincrement())
   name String
+  size Int @default(0)
   createdAt DateTime @default(now())
-  folder Folder @relation(fields: [folderId], references: [id])
-  folderId Int
+  url String
   uploader User @relation (fields: [uploaderId], references: [id])
   uploaderId Int
+  folderName Folder @relation(fields: [folderId], references: [id])
+  folderId Int
+ 
 }

@@ -2,6 +2,7 @@ import passport from 'passport'
 import { Strategy as LocalStrategy } from 'passport-local'
 import User from '../models/User.js'
 import bcrypt from 'bcryptjs'
+import he from 'he'
 
 const options = {
   usernameField: 'email',
@@ -18,14 +19,16 @@ async function strategyVerify(email, password, done) {
       })
 
     // const match = await bcrypt.compare(password, user.password)
-    const match = password === user.password
+    const match = await bcrypt.compare(he.decode(password), user.password)
 
     if (!match)
       return done(null, false, {
         message: 'Incorrect username or password',
       })
 
-    return done(null, user)
+    return done(null, user, {
+      message: 'Successfully logged in!',
+    })
   } catch (error) {
     return done(error)
   }
@@ -40,11 +43,10 @@ passport.serializeUser((user, done) => {
 })
 
 passport.deserializeUser(async (id, done) => {
-  console.log('de-serializing', id)
   try {
     const user = await User.findUserById(id)
     if (!user) return done(null, false)
-    console.log({ user })
+
     done(null, user)
   } catch (error) {
     done(error, null)

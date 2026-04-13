@@ -32,7 +32,7 @@ const store = new PrismaSessionStore(prisma, {
 
 app.use(
   session({
-    // store,
+    store,
     secret: SESSION_SECRET,
     rolling: true,
     saveUninitialized: true,

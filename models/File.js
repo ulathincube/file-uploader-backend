@@ -1,21 +1,58 @@
 import prisma from '../config/prisma.js'
 
 class File {
-  static async createNewFile(userId, filename, location) {
+  static async createNewFile(userId, originalname, size, url, folder) {
     try {
-      const newFile = await prisma.file.create({
+      const foundFolder = await prisma.folder.findUnique({
+        where: {
+          name: folder,
+        },
+      })
+
+      if (foundFolder)
+        return await prisma.file.create({
+          data: {
+            name: originalname,
+            size,
+            url,
+            folderName: {
+              connect: {
+                id: foundFolder.id,
+              },
+            },
+            uploader: {
+              connect: {
+                id: userId,
+              },
+            },
+          },
+          include: {
+            uploader: true,
+            folderName: true,
+          },
+        })
+
+      return await prisma.file.create({
         data: {
-          name: filename,
-          location,
+          name: originalname,
+          size,
+          url,
+          folderName: {
+            create: {
+              name: '/',
+            },
+          },
           uploader: {
             connect: {
               id: userId,
             },
           },
         },
+        include: {
+          uploader: true,
+          folderName: true,
+        },
       })
-
-      return newFile
     } catch (error) {
       throw error
     }
@@ -33,6 +70,18 @@ class File {
       })
 
       return file
+    } catch (error) {
+      throw error
+    }
+  }
+
+  static async getAllFiles() {
+    try {
+      const allFiles = await prisma.file.findMany()
+
+      console.log({ allFiles })
+
+      return allFiles
     } catch (error) {
       throw error
     }

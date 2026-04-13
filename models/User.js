@@ -28,6 +28,23 @@ class User {
       throw error
     }
   }
+
+  static async createUser(userData) {
+    const { name, email, password } = userData
+    try {
+      const newUser = await prisma.user.create({
+        data: {
+          email,
+          password,
+          name,
+        },
+      })
+
+      return newUser
+    } catch (error) {
+      throw error
+    }
+  }
 }
 
 export default User

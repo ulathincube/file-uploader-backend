@@ -1,14 +1,30 @@
-import { body, matchedData, validationResult, param } from 'express-validator'
+import {
+  body,
+  matchedData,
+  validationResult,
+  param,
+  check,
+} from 'express-validator'
 import { readdir, mkdir } from 'fs/promises'
 import { join, extname } from 'node:path'
 import upload from '../config/multer.js'
 import File from '../models/File.js'
+import Folder from '../models/Folder.js'
+import supabase from '../config/supabase.js'
+import { decode } from 'base64-arraybuffer'
 
 const __dirname = import.meta.dirname
 const filesDir = join(__dirname, '../', 'temp')
 
 const root = process.cwd()
 const tempFolder = join(root, './temp')
+
+const validateFile = check('file')
+  .custom((value, { req }) => {
+    if (!req.file) return false
+    return true
+  })
+  .withMessage('Please upload a valid file')
 
 const validateFolder = body('folder')
   .trim()
@@ -20,30 +36,53 @@ const validateFileId = param('fileId')
   .notEmpty()
   .withMessage('Please provide a fileId')
 
-async function postFile(req, res, next) {
-  const uploaderId = req.user.id
-  console.log(uploaderId)
-  // body // param
+const validateDownload = param('url')
+  .trim()
+  .notEmpty()
+  .withMessage('Please provide an image url')
 
+async function postCurrentFile(req, res, next) {
   try {
-    upload(req, res, async (error) => {
-      if (error) return res.status(500).json({ error })
+    const errors = validationResult(req)
 
-      if (!req.file)
-        return res.status(400).json({ error: 'Please provide a file!' })
+    if (!errors.isEmpty()) throw new Error('Please provide a valid file!')
 
-      console.log(req.file)
+    const {
+      file: { originalname, size, buffer, mimetype },
+      user: { id },
+    } = req
 
-      await File.createNewFile(uploaderId, req.file.filename)
+    // const filebase64 = decode(buffer.toString('base64'))
 
-      return res.status(201).json({ message: 'File uploaded!' })
-    })
+    const { data, error } = await supabase.storage
+      .from('file-uploader')
+      .upload(`public/${originalname}`, buffer, {
+        contentType: mimetype,
+      })
+
+    if (error) throw error
+
+    const { data: uploadedFile, error: fetchError } = supabase.storage
+      .from('file-uploader')
+      .getPublicUrl(data.path)
+
+    await File.createNewFile(
+      id,
+      originalname,
+      size,
+      uploadedFile.publicUrl,
+      '/',
+    )
+
+    res.status(201).json({ message: 'File uploaded!' })
 
     // res.status(201).json({ message: 'File uploaded!' })
   } catch (error) {
-    throw error
+    next(error)
   }
 }
+
+const postFile = [upload, validateFile, postCurrentFile]
 
 async function createFolder(req, res, next) {
   try {
@@ -53,10 +92,9 @@ async function createFolder(req, res, next) {
 
     const { folder } = matchedData(req)
 
-    const newFolder = join(tempFolder, `./${folder}`)
+    await Folder.createNewFolder(folder)
 
-    await mkdir(newFolder)
-    res.status(201).json({ message: 'Created folder successfully' })
+    res.status(201).json({ message: 'Folder created!' })
   } catch (error) {
     throw error
   }
@@ -66,9 +104,7 @@ const createNewFolder = [validateFolder, createFolder]
 
 async function getAllFiles(req, res, next) {
   try {
-    const allFiles = await readdir(filesDir)
-
-    // console.log(allFiles)
+    const allFiles = await File.getAllFiles()
 
     res.status(200).json(allFiles)
   } catch (error) {
@@ -90,11 +126,9 @@ async function getFilesFromFolder(req, res, next) {
 
     const { folder } = matchedData(req)
 
-    const folderDirectory = join(filesDir, `./${folder}`)
+    const filesInFolder = await Folder.getFolder(folder)
 
-    const allFiles = await readdir(folderDirectory)
-
-    return res.status(200).json(allFiles)
+    return res.status(200).json(filesInFolder)
   } catch (error) {
     if (error) throw error
   }
@@ -103,7 +137,6 @@ async function getFilesFromFolder(req, res, next) {
 const getFilesFromCurrentFolder = [validateCurrentFolder, getFilesFromFolder]
 
 async function postToCurrentFolder(req, res, next) {
-  console.log('trying to post within folder')
   try {
     const errors = validationResult(req)
 
@@ -112,26 +145,56 @@ async function postToCurrentFolder(req, res, next) {
 
     const { folder } = matchedData(req)
 
-    console.log(folder)
-    // const folderDirectory = join(filesDir, `./${folder}`)
+    const {
+      file: { originalname, size, buffer, mimetype },
+      user: { id },
+    } = req
 
-    await File.createNewFile(req.user.id, req.file.filename, `/${folder}`)
+    const { data, error } = await supabase.storage
+      .from('file-uploader')
+      .upload(`public/${folder}/${originalname}`, buffer, {
+        contentType: mimetype,
+      })
 
-    req.folderName = folder
-    upload(req, res, (error) => {
-      if (error) return res.status(500).json({ error })
-
-      if (!req.file)
-        return res.status(400).json({ error: 'Please provide a file' })
-
-      return res.status(201).json({ message: 'File uploaded!' })
-    })
-  } catch (error) {
     if (error) throw error
+
+    const { data: uploadedFile, error: fetchError } = supabase.storage
+      .from('file-uploader')
+      .getPublicUrl(data.path)
+
+    if (fetchError) throw error
+
+    console.log({ data, error, uploadedFile, fetchError, id })
+
+    await File.createNewFile(
+      id,
+      originalname,
+      size,
+      uploadedFile.publicUrl,
+      folder,
+    )
+
+    // upload(req, res, (error) => {
+    //   if (error) return res.status(500).json({ error })
+
+    //   if (!req.file)
+    //     return res.status(400).json({ error: 'Please provide a file' })
+
+    //   return res.status(201).json({ message: 'File uploaded!' })
+    // })
+
+    res.status(200).json({ message: 'File uploaded!' })
+  } catch (error) {
+    next(error)
   }
 }
 
-const postFileToCurrentFolder = [validateCurrentFolder, postToCurrentFolder]
+const postFileToCurrentFolder = [
+  upload,
+  validateFile,
+  validateCurrentFolder,
+  postToCurrentFolder,
+]
 
 async function getSingleFile(req, res, next) {
   try {
@@ -148,21 +211,18 @@ async function getSingleFile(req, res, next) {
   }
 }
 
+// http://localhost:5000/api/files/file/:fileId/download
 async function downloadFile(req, res, next) {
-  console.log('server router hit!')
+  console.log('server hit!!!!')
   try {
     const errors = validationResult(req)
-
     if (!errors.isEmpty()) throw new Error('Failed to retrieve this file!')
 
     const { fileId } = matchedData(req)
-    const { name } = await File.getSingleFile(parseInt(fileId))
 
-    const file = join(filesDir, name)
+    const { url } = await File.getSingleFile(parseInt(fileId))
 
-    // if (!file) throw new Error('This file does not exist!')
-
-    res.status(200).download(file)
+    res.set('Content-Disposition', 'attachment').status(200).send(url)
   } catch (error) {
     next(error)
   }
@@ -172,6 +232,20 @@ const getCurrentSingleFile = [validateFileId, getSingleFile]
 
 const downloadCurrentFile = [validateFileId, downloadFile]
 
+// test
+
+async function getAllFolders(req, res, next) {
+  try {
+    const allFolders = await Folder.getAllFolders()
+
+    console.log(allFolders)
+
+    res.status(200).json(allFolders)
+  } catch (error) {
+    next(error)
+  }
+}
+
 export {
   postFile,
   getAllFiles,
@@ -180,4 +254,5 @@ export {
   postFileToCurrentFolder,
   getCurrentSingleFile,
   downloadCurrentFile,
+  getAllFolders,
 }
