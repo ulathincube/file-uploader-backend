@@ -48,16 +48,18 @@ async function login(req, res, next) {
     const { email, password } = matchedData(req)
 
     passport.authenticate('local', { session: true }, (error, user, info) => {
-      if (error) return next(error)
+      if (error) {
+        return next(error)
+      }
 
       req.login(user, (error) => {
-        if (error) return next(error)
+        if (error) return next(new Error(info.message))
         delete user.password
-        return res.status(200).json(user)
+        return res.status(200).json({ data: user })
       })
     })(req, res, next)
   } catch (error) {
-    throw error
+    next(error)
   }
 }
 
@@ -65,7 +67,7 @@ async function register(req, res, next) {
   try {
     const errors = validationResult(req)
 
-    if (!errors.isEmpty()) throw new Error('Invalid user data. Try again!')
+    if (!errors.isEmpty()) return next(new Error('Invalid user data'))
 
     const { name, email, password } = matchedData(req)
     const salt = await bcrypt.genSalt(SALTROUNDS)
@@ -78,9 +80,7 @@ async function register(req, res, next) {
       name,
     })
 
-    delete newUser.password
-
-    res.status(200).json(newUser)
+    res.status(200).json({ data: 'New user created' })
   } catch (error) {
     next(error)
   }

@@ -1,6 +1,9 @@
 function errorHandler(error, req, res, next) {
-  console.log(error.message, error.name)
-  next(error)
+  console.dir(error)
+  return res.status(500).json({
+    error: error.message,
+    data: null,
+  })
 }
 
 export default errorHandler

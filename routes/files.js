@@ -6,7 +6,6 @@ import {
   getFilesFromCurrentFolder,
   postFileToCurrentFolder,
   getCurrentSingleFile,
-  downloadCurrentFile,
   getAllFolders,
 } from '../controllers/files.js'
 
@@ -17,8 +16,6 @@ router.post('/folders/:folder', postFileToCurrentFolder)
 
 router.post('/folders', createNewFolder)
 router.get('/folders', getAllFolders)
-
-router.get('/file/:fileId/download', downloadCurrentFile)
 
 router.get('/file/:fileId', getCurrentSingleFile)
 

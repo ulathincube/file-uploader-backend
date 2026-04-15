@@ -18,7 +18,6 @@ async function strategyVerify(email, password, done) {
         message: 'Incorrect username or password',
       })
 
-    // const match = await bcrypt.compare(password, user.password)
     const match = await bcrypt.compare(he.decode(password), user.password)
 
     if (!match)

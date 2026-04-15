@@ -5,19 +5,12 @@ import {
   param,
   check,
 } from 'express-validator'
-import { readdir, mkdir } from 'fs/promises'
 import { join, extname } from 'node:path'
 import upload from '../config/multer.js'
 import File from '../models/File.js'
 import Folder from '../models/Folder.js'
 import supabase from '../config/supabase.js'
 import { decode } from 'base64-arraybuffer'
-
-const __dirname = import.meta.dirname
-const filesDir = join(__dirname, '../', 'temp')
-
-const root = process.cwd()
-const tempFolder = join(root, './temp')
 
 const validateFile = check('file')
   .custom((value, { req }) => {
@@ -52,8 +45,6 @@ async function postCurrentFile(req, res, next) {
       user: { id },
     } = req
 
-    // const filebase64 = decode(buffer.toString('base64'))
-
     const { data, error } = await supabase.storage
       .from('file-uploader')
       .upload(`public/${originalname}`, buffer, {
@@ -66,6 +57,8 @@ async function postCurrentFile(req, res, next) {
       .from('file-uploader')
       .getPublicUrl(data.path)
 
+    if (fetchError) throw error
+
     await File.createNewFile(
       id,
       originalname,
@@ -74,9 +67,7 @@ async function postCurrentFile(req, res, next) {
       '/',
     )
 
-    res.status(201).json({ message: 'File uploaded!' })
-
-    // res.status(201).json({ message: 'File uploaded!' })
+    res.status(201).json({ data: 'File uploaded!', error: null })
   } catch (error) {
     next(error)
   }
@@ -94,9 +85,9 @@ async function createFolder(req, res, next) {
 
     await Folder.createNewFolder(folder)
 
-    res.status(201).json({ message: 'Folder created!' })
+    res.status(201).json({ data: 'Folder created!', error: null })
   } catch (error) {
-    throw error
+    next(error)
   }
 }
 
@@ -106,9 +97,9 @@ async function getAllFiles(req, res, next) {
   try {
     const allFiles = await File.getAllFiles()
 
-    res.status(200).json(allFiles)
+    res.status(200).json({ data: allFiles, error: null })
   } catch (error) {
-    throw error
+    next(error)
   }
 }
 
@@ -128,9 +119,9 @@ async function getFilesFromFolder(req, res, next) {
 
     const filesInFolder = await Folder.getFolder(folder)
 
-    return res.status(200).json(filesInFolder)
+    return res.status(200).json({ data: filesInFolder, error: null })
   } catch (error) {
-    if (error) throw error
+    next(error)
   }
 }
 
@@ -164,8 +155,6 @@ async function postToCurrentFolder(req, res, next) {
 
     if (fetchError) throw error
 
-    console.log({ data, error, uploadedFile, fetchError, id })
-
     await File.createNewFile(
       id,
       originalname,
@@ -174,16 +163,7 @@ async function postToCurrentFolder(req, res, next) {
       folder,
     )
 
-    // upload(req, res, (error) => {
-    //   if (error) return res.status(500).json({ error })
-
-    //   if (!req.file)
-    //     return res.status(400).json({ error: 'Please provide a file' })
-
-    //   return res.status(201).json({ message: 'File uploaded!' })
-    // })
-
-    res.status(200).json({ message: 'File uploaded!' })
+    res.status(200).json({ data: 'File uploaded!', error: null })
   } catch (error) {
     next(error)
   }
@@ -205,42 +185,22 @@ async function getSingleFile(req, res, next) {
     const { fileId } = matchedData(req)
     const file = await File.getSingleFile(parseInt(fileId))
 
-    return res.status(200).json(file)
+    return res.status(200).json({ data: file, error: null })
   } catch (error) {
     next(error)
   }
 }
 
 // http://localhost:5000/api/files/file/:fileId/download
-async function downloadFile(req, res, next) {
-  console.log('server hit!!!!')
-  try {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) throw new Error('Failed to retrieve this file!')
-
-    const { fileId } = matchedData(req)
-
-    const { url } = await File.getSingleFile(parseInt(fileId))
-
-    res.set('Content-Disposition', 'attachment').status(200).send(url)
-  } catch (error) {
-    next(error)
-  }
-}
 
 const getCurrentSingleFile = [validateFileId, getSingleFile]
-
-const downloadCurrentFile = [validateFileId, downloadFile]
 
 // test
 
 async function getAllFolders(req, res, next) {
   try {
     const allFolders = await Folder.getAllFolders()
-
-    console.log(allFolders)
-
-    res.status(200).json(allFolders)
+    res.status(200).json({ data: allFolders, error: null })
   } catch (error) {
     next(error)
   }
@@ -253,6 +213,5 @@ export {
   getFilesFromCurrentFolder,
   postFileToCurrentFolder,
   getCurrentSingleFile,
-  downloadCurrentFile,
   getAllFolders,
 }

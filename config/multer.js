@@ -1,5 +1,4 @@
 import multer from 'multer'
-import { extname } from 'node:path'
 
 const storage = multer.memoryStorage()
 

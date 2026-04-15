@@ -52,17 +52,6 @@ app.use(passport.session())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// const logger = (req, res, next) => {
-//   console.log({
-//     user: req.user,
-//     url: req.url,
-//     authenticated: req.isAuthenticated() || false,
-//   })
-//   next()
-// }
-
-// app.use(logger)
-
 app.use('/api/auth', authRouter)
 app.use('/api/files', filesRouter)
 app.use('/api/index', indexRouter)

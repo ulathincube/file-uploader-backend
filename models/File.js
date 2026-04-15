@@ -31,28 +31,29 @@ class File {
             folderName: true,
           },
         })
-
-      return await prisma.file.create({
-        data: {
-          name: originalname,
-          size,
-          url,
-          folderName: {
-            create: {
-              name: '/',
+      else {
+        return await prisma.file.create({
+          data: {
+            name: originalname,
+            size,
+            url,
+            folderName: {
+              create: {
+                name: folder,
+              },
+            },
+            uploader: {
+              connect: {
+                id: userId,
+              },
             },
           },
-          uploader: {
-            connect: {
-              id: userId,
-            },
+          include: {
+            uploader: true,
+            folderName: true,
           },
-        },
-        include: {
-          uploader: true,
-          folderName: true,
-        },
-      })
+        })
+      }
     } catch (error) {
       throw error
     }
@@ -66,6 +67,7 @@ class File {
         },
         include: {
           uploader: true,
+          folderName: true,
         },
       })
 
@@ -78,8 +80,6 @@ class File {
   static async getAllFiles() {
     try {
       const allFiles = await prisma.file.findMany()
-
-      console.log({ allFiles })
 
       return allFiles
     } catch (error) {

@@ -16,7 +16,7 @@ class Folder {
   }
 
   static async getFolder(folderName) {
-    console.log(folderName)
+    
     try {
       const folder = await prisma.folder.findUnique({
         where: {
