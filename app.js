@@ -12,6 +12,7 @@ import cors from 'cors'
 import 'dotenv/config'
 import { PrismaSessionStore } from '@quixo3/prisma-session-store'
 import prisma from './config/prisma.js'
+import checkAuthentication from './middlewares/checkAuthentication.js'
 
 const app = express()
 
@@ -53,7 +54,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 app.use('/api/auth', authRouter)
-app.use('/api/files', filesRouter)
+app.use('/api/files', checkAuthentication, filesRouter)
 app.use('/api/index', indexRouter)
 app.use('/*splat', notFound)
 
