@@ -55,7 +55,7 @@ async function login(req, res, next) {
       req.login(user, (error) => {
         if (error) return next(new Error(info.message))
         delete user.password
-        return res.status(200).json({ data: user })
+        return res.status(200).json({ data: user, error: null })
       })
     })(req, res, next)
   } catch (error) {
@@ -81,6 +81,17 @@ async function register(req, res, next) {
     })
 
     res.status(200).json({ data: 'New user created' })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function logoutUser(req, res, next) {
+  try {
+    req.logout((error) => {
+      if (error) return next(error)
+      return res.status(200).json({ data: 'Logged Out', error: null })
+    })
   } catch (error) {
     next(error)
   }
